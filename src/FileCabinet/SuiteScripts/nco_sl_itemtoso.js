@@ -53,108 +53,115 @@ define([
     try {
       log.debug("Inside Historical Sales", entityId);
       let sql = `SELECT TRANSACTION.TranID AS tranid,
-    TRANSACTION.TranDate AS date,
-    TransactionLine.rate,
-    TransactionLine.quantity AS quantity,
-    BUILTIN.DF(TransactionLine.item) AS item_name,
-FROM TRANSACTION
-INNER JOIN transactionLine ON TRANSACTION.id = transactionLine.TRANSACTION
-WHERE TRANSACTION.Entity = 17815
-
---UNION ALL
---
---SELECT custrecord_nco_so_hist_invnum AS tranid,
---    custrecord_nco_so_hist_date AS date,
---    custrecord_nco_so_hist_item_price AS rate,
---    custrecord_nco_so_hist_qty AS quantity,
---    custrecord_nco_so_hist_item AS item_name
---FROM customrecord_nco_so_hist_lines
---WHERE custrecord_nco_so_hist_lines_cust = 17815`;
+      TRANSACTION.TranDate AS date,
+      TransactionLine.rate,
+      TransactionLine.quantity AS quantity,
+     TransactionLine.item AS item_name,
+    BUILTIN.DF(TransactionLine.units) AS units
+  FROM TRANSACTION
+  INNER JOIN transactionLine ON TRANSACTION.id = transactionLine.TRANSACTION
+  WHERE TRANSACTION.Entity = 17815 AND Transaction.type = 'CustInvc' AND TransactionLine.itemtype = 'InvtPart'
+  UNION ALL
+  SELECT custrecord_nco_so_hist_invnum AS tranid,
+      custrecord_nco_so_hist_date AS date,
+      custrecord_nco_so_hist_item_price AS rate,
+      custrecord_nco_so_hist_qty AS quantity,
+      custrecord_nco_so_hist_item AS item_name,
+    BUILTIN.DF(custrecord_nco_so_hist_uom) AS units
+  FROM customrecord_nco_so_hist_lines
+  WHERE custrecord_nco_so_hist_lines_cust = 17815`;
       log.debug({title: 'SQL statement', details: sql});
-      var results = query.runSuiteQL({ query: sql }).asMappedResults();
+      let results = query.runSuiteQL({ query: sql }).asMappedResults();
       log.debug({title: 'SQL Results', details: results});
 // netsuite doesn't like my union statement...
-      if (results.length > 0) {
-        let listSales = form.addSublist({
-          id: "custpage_sl_sales",
-          label: `Item Sales (${results.length})`,
-          type: serverWidget.SublistType.LIST,
-        });
+      // if (results.length > 0) {
+      //   log.debug({title: "inside results length", details: results.length});
+      //   let listSales = form.addSublist({
+      //     id: 'custpage_sl_sales',
+      //     label: `Item Sales (${results.length})`,
+      //     type: serverWidget.SublistType.LIST,
+      //   });
 
-        listSales.addField({
-          id: "custpage_sl_histsales_tranid",
-          label: "Trans Id",
-          type: serverWidget.FieldType.TEXT,
-        });
-        listSales.addField({
-          id: "custpage_sl_histsales_date",
-          label: "Date",
-          type: serverWidget.FieldType.TEXT,
-        });
-        listSales.addfield({
-          id: "custpage_sl_histsales_rate",
-          label: "Rate",
-          type: serverWidget.FieldType.TEXT,
-        });
-        listSales.addfield({
-          id: "custpage_sl_histsales_quantity",
-          label: "Quantity",
-          type: serverWidget.FieldType.TEXT,
-        });
-        listSales.addfield({
-          id: "custpage_sl_histsales_item_name",
-          label: "Item Name",
-          type: serverWidget.FieldType.TEXT,
-        });
+      //   listSales.addField({
+      //     id: 'custpage_sl_histsales_select',
+      //     label: 'Select',
+      //     type: 'checkbox'
+      //   });
 
-        let columnNames = Object.keys(results[0]);
-        for (let i = 0; i < results.length; i++) {
-          let result = results[i];
-          for (let c = 0; c < columnNames.length; c++) {
-            let columnName = columnNames[c];
-            let value = result[columnName];
-            switch (columnName) {
-              case "tranid":
-                listSales.setSublistValue({
-                  id: "custpage_histsales_tranid",
-                  line: i,
-                  value: value,
-                });
-                break;
-              case "date":
-                listSales.setSublistValue({
-                  id: "custpage_sl_histsales_date",
-                  line: i,
-                  value: value,
-                });
-                break;
-              case "rate":
-                listSales.setSublistValue({
-                  id: "custpage_sl_histsales_rate",
-                  line: i,
-                  value: value,
-                });
-                break;
-              case "quantity":
-                listSales.setSublistValue({
-                  id: "custpage_sl_histsales_quantity",
-                  line: i,
-                  value: value,
-                });
-                break;
-              case "item_name":
-                listSales.setSublistValue({
-                  id: "custpage_sl_histsales_item_name",
-                  line: i,
-                  value: value,
-                });
-                break;
-              default:
-            }
-          }
-        }
-      }
-      return true;
+      //   listSales.addField({
+      //     id: "custpage_sl_histsales_tranid",
+      //     label: "Trans Id",
+      //     type: serverWidget.FieldType.TEXT,
+      //   });
+      //   listSales.addField({
+      //     id: "custpage_sl_histsales_date",
+      //     label: "Date",
+      //     type: serverWidget.FieldType.TEXT,
+      //   });
+      //   listSales.addField({
+      //     id: "custpage_sl_histsales_rate",
+      //     label: "Rate",
+      //     type: serverWidget.FieldType.TEXT,
+      //   });
+      //   listSales.addField({
+      //     id: "custpage_sl_histsales_quantity",
+      //     label: "Quantity",
+      //     type: serverWidget.FieldType.TEXT,
+      //   });
+      //   listSales.addField({
+      //     id: "custpage_sl_histsales_item_name",
+      //     label: "Item Name",
+      //     type: serverWidget.FieldType.TEXT,
+      //   });
+
+      //   let columnNames = Object.keys(results[0]);
+      //   for (let i = 0; i < results.length; i++) {
+      //     let result = results[i];
+      //     for (let c = 0; c < columnNames.length; c++) {
+      //       let columnName = columnNames[c];
+      //       let value = result[columnName];
+      //       switch (columnName) {
+      //         case "tranid":
+      //           listSales.setSublistValue({
+      //             id: "custpage_sl_histsales_tranid",
+      //             line: i,
+      //             value: value,
+      //           });
+      //           break;
+      //         case "date":
+      //           listSales.setSublistValue({
+      //             id: "custpage_sl_histsales_date",
+      //             line: i,
+      //             value: value,
+      //           });
+      //           break;
+      //         case "rate":
+      //           listSales.setSublistValue({
+      //             id: "custpage_sl_histsales_rate",
+      //             line: i,
+      //             value: value,
+      //           });
+      //           break;
+      //         case "quantity":
+      //           listSales.setSublistValue({
+      //             id: "custpage_sl_histsales_quantity",
+      //             line: i,
+      //             value: value,
+      //           });
+      //           break;
+      //         case "item_name":
+      //           listSales.setSublistValue({
+      //             id: "custpage_sl_histsales_item_name",
+      //             line: i,
+      //             value: value,
+      //           });
+      //           break;
+      //         default:
+      //       }
+      //     }
+      //   }
+      // }
+      return results;
     } catch (e) {
       log.debug({
         title: `historical sales`,
@@ -199,13 +206,15 @@ WHERE TRANSACTION.Entity = 17815
     log.debug({ title: `ln 79 parameters`, details: `inside onGet` });
 
     let parameters = scriptContext.request.parameters;
+
+    const {custpage_sl_histsales_cust} = scriptContext.request.parameters
     // defines item here with no parameter
     // if parameters.item does not equal undefined then take the parameter and redefine the item as the parameter item, else move on and create the form
     // let item;
-    let entityId;
+
     // how do I define the parameters? Is this done in the client script?
     if (typeof parameters.entityId != "undefined") {
-      item = parameters.entityId;
+      custpage_sl_histsales_cust = parameters.entityId;
     }
     const scriptObj = runtime.getCurrentScript();
 
@@ -231,61 +240,51 @@ WHERE TRANSACTION.Entity = 17815
 
     //todo: add Sales Orders stuff to form - define and create the form
 
-    let fldTranId = form.addField({
+    const fldTranId = form.addField({
       id: "custpage_sl_histsales_tranid",
       label: "Trans Id",
       type: serverWidget.FieldType.TEXT,
     });
-    let fldDate = form.addField({
-      id: "custpage_sl_histsales_date",
-      label: "Date",
-      type: serverWidget.FieldType.TEXT,
-    });
-    let fldRate = form.addField({
-      id: "custpage_sl_histsales_rate",
-      label: "Rate",
-      type: serverWidget.FieldType.TEXT,
-    });
-    let fldQuantity = form.addField({
-      id: "custpage_sl_histsales_quantity",
-      label: "Quantity",
-      type: serverWidget.FieldType.TEXT,
-    });
-    let fldItemName = form.addField({
-      id: "custpage_sl_histsales_item_name",
-      label: "Item Name",
-      type: serverWidget.FieldType.TEXT,
+
+    const fldCustomer = form.addField({
+      id: 'custpage_sl_histsales_cust',
+      label: 'Customer',
+      type: 'select',
+      source: 'customer'
     });
 
-    // make these inlinhe
+    if (custpage_sl_histsales_cust) fldCustomer.defaultValue = custpage_sl_histsales_cust;
+    // make these inline
 
     fldTranId.updateDisplayType({
       displayType: serverWidget.FieldDisplayType.INLINE,
     });
-    fldDate.updateDisplayType({
-      displayType: serverWidget.FieldDisplayType.INLINE,
-    });
-    fldRate.updateDisplayType({
-      displayType: serverWidget.FieldDisplayType.INLINE,
-    });
-    fldQuantity.updateDisplayType({
-      displayType: serverWidget.FieldDisplayType.INLINE,
-    });
-    fldItemName.updateDisplayType({
-      displayType: serverWidget.FieldDisplayType.INLINE,
+    fldCustomer.updateDisplayType({
+      displayType: serverWidget.FieldDisplayType.NORMAL,
     });
 
     // Help Fields
-    // fldTranId.setHelpText({help : `The Vendor Group or Vendor Code.`});
-    // fldDate.setHelpText({help : `This is the unique Id for the item displayed.`});
-    // fldRate.setHelpText({help : `This is the item Name and Link to NetSuite item record.`});
-    // fldQuantity.setHelpText({help : `For Future use opf Turnover Ratio for the Trailing 12 months.`});
-    // fldItemName.setHelpText({help : `Average Cost of the item from the NetSuite Item Record.`});
+    fldTranId.setHelpText({help : `The transaction ID.`});
+    fldCustomer.setHelpText({help : `This is the customer.`});
 
     let resultList = form.addSublist({
       id: "custpage_sl_one", // Sublist 1 of #
       label: `Item Usage`,
       type: serverWidget.SublistType.LIST, //
+    });
+
+    var customerSelected = form.getField({id: 'custpage_sl_histsales_cust'});
+    log.debug({title: "CustomerSelected", details: customerSelected})
+
+    if (!customerSelected) {
+      scriptContext.response.writePage(form);
+      return;
+    }
+
+    const selectField = resultList.addField({
+      id: 'custpage_sl_histsales_select',
+      type: serverWidget.FieldType.CHECKBOX,
+      label: 'Select'
     });
 
     // Add field for sublist
@@ -313,10 +312,12 @@ WHERE TRANSACTION.Entity = 17815
     resultList.addField({
       id: "custpage_sl_histsales_quantity",
       label: "Quantity",
-      type: serverWidget.FieldType.INTEGER,
+      type: serverWidget.FieldType.FLOAT,
     });
 
-    let results = historicalSales(17815, form);
+    const entityId = form.getField({id: 'custpage_sl_histsales_cust'});
+
+    let results = historicalSales(entityId, form);
 
     log.debug({
       title: "ln 155: typeof(results)",
@@ -329,8 +330,10 @@ WHERE TRANSACTION.Entity = 17815
       for (let r = 0; r < results.length; r++) {
         let result = results[r];
 
+        
         if (r === 0) {
           form.updateDefaultValues({
+            custpage_sl_histsales_select: `F`,
             custpage_sl_histsales_tranid: `${results[0].tranid}`,
             custpage_sl_histsales_item_name: `${results[0].item_name}`,
             custpage_sl_histsales_date: `${results[0].date}`,
@@ -341,23 +344,66 @@ WHERE TRANSACTION.Entity = 17815
         for (let c = 0; c < columnNames.length; c++) {
           let columnName = columnNames[c];
           let value = result[columnName];
-
+          // resultList.addField({
+          //   id: 'custpage_sl_histsales_ioselect',
+          //   label: 'Sales Order',
+          //   type: 'select',
+          // });
+          // resultList.setSublistValue({
+          //   id:'custpage_sl_histsales_ioselect',
+          //   line: r,
+          //   value: 'F',
+          // });
           switch (columnName) {
-            case 'tranid':
-            case 'item_name':
-            case 'date':
-            case 'rate':
-            case 'quantity':
-              break;
-              default:
-          }
+                case "tranid":
+                  resultList.setSublistValue({
+                    id: "custpage_sl_histsales_tranid",
+                    line: r,
+                    value: value,
+                  });
+                  break;
+                case "date":
+                  resultList.setSublistValue({
+                    id: "custpage_sl_histsales_date",
+                    line: r,
+                    value: value,
+                  });
+                  break;
+                case "rate":
+                  resultList.setSublistValue({
+                    id: "custpage_sl_histsales_rate",
+                    line: r,
+                    value: value,
+                  });
+                  break;
+                case "quantity":
+                  resultList.setSublistValue({
+                    id: "custpage_sl_histsales_quantity",
+                    line: r,
+                    value: value,
+                  });
+                  break;
+                case "item_name":
+                  resultList.setSublistValue({
+                    id: "custpage_sl_histsales_item_name",
+                    line: r,
+                    value: value,
+                  });
+                  break;
+                default:
+              }
         }
       }
     }
 
-    if (typeof parameters.entityId != "undefined") {
-      historicalSales(17815, form);
-    }
+    // if (typeof parameters.entityId != "undefined") {
+    //   historicalSales(17815, form);
+    // }
+
+    // Add a submit button to the form - Submit button is in the onGet function. The trigger event is a programmed call into the onPost Function
+    form.addSubmitButton({
+        label: 'Create Sales Order'
+    });
 
     scriptContext.response.writePage(form);
     log.debug({ title: "End onGet" });
