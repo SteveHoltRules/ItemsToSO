@@ -186,7 +186,7 @@ define([
 
     try {
       log.audit({
-        title: "Inside Try OnGet",
+        title: "Inside Try OnRequest",
         details: `${scriptContext.request.method}`,
       });
       eventRouter[scriptContext.request.method](scriptContext);
@@ -418,7 +418,205 @@ define([
     // process the post and list the values of the period selected - deposit the
     // reports/financial/
     // nco_sl_tkm_trialbalance
+
+    const lineCount = context.request.getLineCount('custpage_quote_list');
+      const unorderedLines = [];
+
+      for (let j = 0; j < lineCount; j++) {
+        const selected = context.request.getSublistValue('custpage_quote_list', 'custpage_select', j);
+        const quote = context.request.getSublistValue('custpage_quote_list', 'custpage_quote', j);
+        const line = context.request.getSublistValue('custpage_quote_list', 'custpage_line', j);
+        const selectionNum = context.request.getSublistValue('custpage_quote_list', 'custpage_selection_num', j);
+
+        if (selected != 'T') continue;
+
+        const lineObj = {
+          quote,
+          line,
+          selectionNum
+        };
+
+        unorderedLines.push(lineObj);
+      }
+
+      const sortedLines = _.sortBy(unorderedLines, 'selectionNum');
+      const quotes = _.uniq(_.pluck(sortedLines, 'quote'));
+
+      const fieldMap = {
+        location: 'location',
+        line: 'custcol_hci_line_id',
+        item: 'item',
+        custcol_mhi_hc_specialorder: 'custcol_mhi_hc_specialorder',
+        custcol_mhi_hc_dropship: 'custcol_mhi_hc_dropship',
+        memo: 'description',
+        quantity: 'quantity',
+        pricelevel: 'price',
+        rate: 'rate',
+        amount: 'amount',
+        shipdate: 'expectedshipdate',
+        custcol_hci_gp_vendor: 'povendor,custcol_hci_gp_vendor',
+        custcol_hci_alternatevendor: 'custcol_hci_alternatevendor',
+        custcol_hci_soporate: 'porate,custcol_hci_soporate',
+        custcol_hf_item_type: 'custcol_hf_item_type',
+        custcol_scm_customerpartnumber: 'custcol_scm_customerpartnumber',
+        costestimate: 'costestimate'
+      };
+
+      salesOrder = record.transform({
+        fromType: 'customer',
+        fromId: customerId,
+        toType: 'salesorder',
+        isDynamic: true
+      });
+
+      salesOrder.setValue('orderstatus', 'A');
+      salesOrder.setValue('otherrefnum', custpage_po_number);
+      salesOrder.setValue('cseg_hci_branch', custpage_branch);
+
+    for (let a = 0; a < sortedLines.length; a++) {
+      const orderLineObj = sortedLines[a];
+
+      // log.debug('orderLineObj', JSON.stringify(orderLineObj));
+
+      const { quote, line } = orderLineObj;
+
+      const quoteLineObj = _.findWhere(quoteLines, { id: quote, line });
+
+      log.debug('quoteLineObj', JSON.stringify(quoteLineObj));
+
+      if (quoteLineObj) {
+        let isVendorItem = false;
+        soLineCount += 1;
+        orderLineObj.selectionNum = soLineCount;
+
+        salesOrder.selectNewLine('item');
+        salesOrder.setCurrentSublistValue('item', 'custcol_hci_linnkedquote', quoteLineObj.id);
+
+        _.each(searchFields, (searchField) => {
+          let value = quoteLineObj[searchField];
+          const setColumns = fieldMap[searchField].split(',');
+
+          // log.debug('searchField=' + searchField);
+
+          if (value && searchField == 'shipdate') {
+            value = format.parse({
+              value,
+              type: format.Type.DATE
+            });
+          } else if (value && (searchField == 'custcol_mhi_hc_specialorder' || searchField == 'custcol_mhi_hc_dropship')) {
+            isVendorItem = true;
+            return;
+          }
+
+          for (let c = 0; c < setColumns.length; c++) {
+            const setColumn = setColumns[c];
+
+            if (!isVendorItem && (setColumn == 'povendor' || setColumn == 'custcol_hci_gp_vendor' || setColumn == 'porate' || setColumn == 'custcol_hci_soporate')) {
+              return;
+            }
+
+            if (value && setColumn == 'povendor') {
+              value = parseInt(value);
+            } else if (value && setColumn == 'custcol_hci_line_id') {
+              value = soLineCount;
+            }
+
+            // log.debug(setColumn, value);
+
+            salesOrder.setCurrentSublistValue('item', setColumn, value);
+          }
+        });
+
+        salesOrder.commitLine('item');
+      }
+    }
+
+    if (!custpage_sales_order && quotes.length == 1) {
+      const quote = record.load({
+        type: 'estimate',
+        id: sortedLines[0].quote,
+        isDynamic: true
+      });
+
+      salesOrder.setValue('cseg_hci_branch', quote.getValue('cseg_hci_branch'));
+      salesOrder.setValue('custbody_hf_fob', quote.getValue('custbody_hf_fob'));
+      salesOrder.setValue('custbody_hci_freightterms', quote.getValue('custbody_hci_freightterms'));
+      salesOrder.setValue('shipcarrier', quote.getValue('shipcarrier'));
+      salesOrder.setValue('shipmethod', quote.getValue('shipmethod'));
+      salesOrder.setValue('custbody_hf_freight_carrier', quote.getValue('custbody_hf_freight_carrier'));
+      salesOrder.setValue('custbody_hci_ordercreator', quote.getValue('custbody_hci_ordercreator'));
+      salesOrder.setValue('custbody_if_bol_notes', quote.getValue('custbody_if_bol_notes'));
+      salesOrder.setValue('custbody_hf_third_party_account', quote.getValue('custbody_hf_third_party_account'));
+
+      const salesOrderLineCount = salesOrder.getLineCount('salesteam');
+
+      for (let s = salesOrderLineCount - 1; s >= 0; s--) {
+        salesOrder.removeLine({
+          sublistId: 'salesteam',
+          line: s
+        });
+      }
+
+      const salesTeamLineCount = quote.getLineCount('salesteam');
+
+      for (let s = 0; s < salesTeamLineCount; s++) {
+        salesOrder.selectNewLine('salesteam');
+        salesOrder.setCurrentSublistValue('salesteam', 'employee', quote.getSublistValue('salesteam', 'employee', s));
+        salesOrder.setCurrentSublistValue('salesteam', 'salesrole', quote.getSublistValue('salesteam', 'salesrole', s));
+        salesOrder.setCurrentSublistValue('salesteam', 'isprimary', quote.getSublistValue('salesteam', 'isprimary', s));
+        salesOrder.setCurrentSublistValue('salesteam', 'contribution', quote.getSublistValue('salesteam', 'contribution', s));
+        salesOrder.commitLine('salesteam');
+      }
+    }
+
+    const salesOrderId = salesOrder.save();
+
+    log.debug('Sales Order Created, ID=' + salesOrderId);
+
+    let scriptDeploymentId = null;
+
+    const deploymentSearch = search.create({
+      type: 'scriptdeployment',
+      filters: search.createFilter({
+        name: 'scriptid',
+        operator: search.Operator.IS,
+        values: 'customdeploy_mhi_hc_quote_to_order_sl'
+      })
+    });
+
+    deploymentSearch.run().each((result) => {
+      scriptDeploymentId = result.id;
+
+      return false;
+    });
+
+    record.submitFields({
+      type: 'scriptdeployment',
+      id: scriptDeploymentId,
+      values: { custscript_mhi_last_sales_order: salesOrderId }
+    });
+
+    const orderObj = {
+      salesOrderId,
+      lines: sortedLines
+    };
+
+    task.create({
+      taskType: task.TaskType.MAP_REDUCE,
+      scriptId: 'customscript' + SCHEDULED_SCRIPT_EXT,
+      deploymentId: 'customdeploy' + SCHEDULED_SCRIPT_EXT,
+      params: { custscript_mhi_order: JSON.stringify(orderObj) }
+    }).submit();
+
+    context.response.sendRedirect({
+      identifier: record.Type.SALES_ORDER,
+      type: https.RedirectType.RECORD,
+      editMode: false,
+      id: salesOrderId
+    });
+    
   }
+
 
   function onError(params) {
     // TODO
