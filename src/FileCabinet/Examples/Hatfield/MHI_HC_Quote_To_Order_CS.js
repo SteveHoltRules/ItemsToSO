@@ -12,6 +12,7 @@
 define(['N/currentRecord', 'N/format', 'N/search', 'N/ui/dialog'], function (currentRecord, format, search, dialog) {
   var exports = {};
   var selectionCount = 0;
+
   var duplicatePO = false;
 
   /**
@@ -39,7 +40,7 @@ define(['N/currentRecord', 'N/format', 'N/search', 'N/ui/dialog'], function (cur
   }
 
   /**
-     * Function to be executed when field is changed.
+     * Function to be executed when field is changed. It runs on the suitelet pages that are selected.
      *
      * @governance XXX
      *
@@ -309,7 +310,7 @@ define(['N/currentRecord', 'N/format', 'N/search', 'N/ui/dialog'], function (cur
   }
 
   /**
-     * Validation function to be executed when record is saved.
+     * SaveREcord takes in the current selections and runs validations
      *
      * @governance XXX
      *
@@ -327,6 +328,7 @@ define(['N/currentRecord', 'N/format', 'N/search', 'N/ui/dialog'], function (cur
      * @function saveRecord
      */
   function saveRecord(scriptContext) {
+  
     var rec = scriptContext.currentRecord;
 
     if (duplicatePO) {

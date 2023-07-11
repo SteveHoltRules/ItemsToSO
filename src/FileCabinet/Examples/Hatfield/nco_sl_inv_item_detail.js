@@ -117,6 +117,9 @@ define(['N/record', 'N/search', 'N/query', 'N/ui/serverWidget', 'N/runtime', 'N/
       fldAverageCost.setHelpText({help : `Average Cost of the item from the NetSuite Item Record.`});
 
 
+    /**
+     * What is this form? Is this the redirect to the sublist records?
+     */
 
       let resultList = form.addSublist(
         {
@@ -154,12 +157,13 @@ define(['N/record', 'N/search', 'N/query', 'N/ui/serverWidget', 'N/runtime', 'N/
       }
       // end month loop
 
+    //   what defines this item list?
+
       let results = getData(item);
       log.debug({title: `ln 133 typeof(results)`, details: `${typeof(results)}`});
 
       if(results.length > 0) {
         let columnNames = Object.keys(results[0]);
-
 
         for (let r = 0; r < results.length; r++) {
           let result = results[r];
@@ -174,8 +178,7 @@ define(['N/record', 'N/search', 'N/query', 'N/ui/serverWidget', 'N/runtime', 'N/
               //, custpage_sl_turn_ratio : `${results[0].vend_code}`
             });
           }
-
-
+// column loop is inside the row loop - reason is to establish what is done on each column separately
         for (let c = 0; c < columnNames.length; c++) {
           let columnName = columnNames[c];
           let value = result[columnName];
@@ -242,6 +245,7 @@ define(['N/record', 'N/search', 'N/query', 'N/ui/serverWidget', 'N/runtime', 'N/
 
       }
 
+    //   I don't see Rick defining item anywhere
       if(typeof(parameters.item) != 'undefined') {
         getSales(item, form);
         getBuilds(item, form);
@@ -253,12 +257,8 @@ define(['N/record', 'N/search', 'N/query', 'N/ui/serverWidget', 'N/runtime', 'N/
 
     }
 
-
-
     function getData(item){
       log.debug({title: `ln 212 getData(${item})`});
-
-
 
       let sql = `
              WITH cte_builds
@@ -287,7 +287,6 @@ define(['N/record', 'N/search', 'N/query', 'N/ui/serverWidget', 'N/runtime', 'N/
                     )
               INNER JOIN item
                 ON tl.item = item.id
-            
             
               WHERE 1 = 1
                 AND (Item.ItemType = 'InvtPart')
@@ -653,7 +652,6 @@ define(['N/record', 'N/search', 'N/query', 'N/ui/serverWidget', 'N/runtime', 'N/
 
     }
 
-
     function getBuilds(item, form){
 
       try {
@@ -912,6 +910,13 @@ define(['N/record', 'N/search', 'N/query', 'N/ui/serverWidget', 'N/runtime', 'N/
      */
     function onPost(context) {
       // TODO
+    //   onPost would fire on the submit
+    // all values get passed into the HTTP object - would process the control value (reference by the control value). Posting it back to the server to do stuff.
+    // could restate it in a text field so that it can be viewed, and then do something with it with a switch case.
+    // suitelet pick a period and hit submit
+    // process the post and list the values of the period selected - deposit the 
+    // reports/financial/
+    // nco_sl_tkm_trialbalance
     }
 
 

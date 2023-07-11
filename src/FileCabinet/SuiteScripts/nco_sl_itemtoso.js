@@ -73,94 +73,6 @@ define([
       log.debug({title: 'SQL statement', details: sql});
       let results = query.runSuiteQL({ query: sql }).asMappedResults();
       log.debug({title: 'SQL Results', details: results});
-// netsuite doesn't like my union statement...
-      // if (results.length > 0) {
-      //   log.debug({title: "inside results length", details: results.length});
-      //   let listSales = form.addSublist({
-      //     id: 'custpage_sl_sales',
-      //     label: `Item Sales (${results.length})`,
-      //     type: serverWidget.SublistType.LIST,
-      //   });
-
-      //   listSales.addField({
-      //     id: 'custpage_sl_histsales_select',
-      //     label: 'Select',
-      //     type: 'checkbox'
-      //   });
-
-      //   listSales.addField({
-      //     id: "custpage_sl_histsales_tranid",
-      //     label: "Trans Id",
-      //     type: serverWidget.FieldType.TEXT,
-      //   });
-      //   listSales.addField({
-      //     id: "custpage_sl_histsales_date",
-      //     label: "Date",
-      //     type: serverWidget.FieldType.TEXT,
-      //   });
-      //   listSales.addField({
-      //     id: "custpage_sl_histsales_rate",
-      //     label: "Rate",
-      //     type: serverWidget.FieldType.TEXT,
-      //   });
-      //   listSales.addField({
-      //     id: "custpage_sl_histsales_quantity",
-      //     label: "Quantity",
-      //     type: serverWidget.FieldType.TEXT,
-      //   });
-      //   listSales.addField({
-      //     id: "custpage_sl_histsales_item_name",
-      //     label: "Item Name",
-      //     type: serverWidget.FieldType.TEXT,
-      //   });
-
-      //   let columnNames = Object.keys(results[0]);
-      //   for (let i = 0; i < results.length; i++) {
-      //     let result = results[i];
-      //     for (let c = 0; c < columnNames.length; c++) {
-      //       let columnName = columnNames[c];
-      //       let value = result[columnName];
-      //       switch (columnName) {
-      //         case "tranid":
-      //           listSales.setSublistValue({
-      //             id: "custpage_sl_histsales_tranid",
-      //             line: i,
-      //             value: value,
-      //           });
-      //           break;
-      //         case "date":
-      //           listSales.setSublistValue({
-      //             id: "custpage_sl_histsales_date",
-      //             line: i,
-      //             value: value,
-      //           });
-      //           break;
-      //         case "rate":
-      //           listSales.setSublistValue({
-      //             id: "custpage_sl_histsales_rate",
-      //             line: i,
-      //             value: value,
-      //           });
-      //           break;
-      //         case "quantity":
-      //           listSales.setSublistValue({
-      //             id: "custpage_sl_histsales_quantity",
-      //             line: i,
-      //             value: value,
-      //           });
-      //           break;
-      //         case "item_name":
-      //           listSales.setSublistValue({
-      //             id: "custpage_sl_histsales_item_name",
-      //             line: i,
-      //             value: value,
-      //           });
-      //           break;
-      //         default:
-      //       }
-      //     }
-      //   }
-      // }
       return results;
     } catch (e) {
       log.debug({
@@ -170,8 +82,6 @@ define([
       return false;
     }
   };
-
-
 
 
   const onRequest = (scriptContext) => {
@@ -419,202 +329,56 @@ define([
     // reports/financial/
     // nco_sl_tkm_trialbalance
 
-    const lineCount = context.request.getLineCount('custpage_quote_list');
-      const unorderedLines = [];
+    var linesToUpdate = {};
+            // If the method is post, the getsublistvalue of the select for the lines
+            // lineCount is a method returned by the suitelet widget module
+            for (var p = 0; p < resultList.lineCount; p++) {
 
-      for (let j = 0; j < lineCount; j++) {
-        const selected = context.request.getSublistValue('custpage_quote_list', 'custpage_select', j);
-        const quote = context.request.getSublistValue('custpage_quote_list', 'custpage_quote', j);
-        const line = context.request.getSublistValue('custpage_quote_list', 'custpage_line', j);
-        const selectionNum = context.request.getSublistValue('custpage_quote_list', 'custpage_selection_num', j);
+                var selectValue = context.request.getSublistValue({
+                    group: 'custpage_sl_one',
+                    name: 'custpage_sl_histsales_select',
+                    line: p
+                });
 
-        if (selected != 'T') continue;
+                log.debug({'title' : 'selectValue', 'details' : selectValue});
 
-        const lineObj = {
-          quote,
-          line,
-          selectionNum
-        };
+                if (selectValue === true || selectValue == 'T') {
 
-        unorderedLines.push(lineObj);
-      }
+                    var orderItem = context.request.getSublistValue({
+                        group: 'custpage_sl_histsales_item_name',
+                        name: 'item',
+                        line: p,
+                    });
 
-      const sortedLines = _.sortBy(unorderedLines, 'selectionNum');
-      const quotes = _.uniq(_.pluck(sortedLines, 'quote'));
+                    var orderPrice = context.request.getSublistValue({
+                        group: 'custpage_sl_one',
+                        name: 'custpage_sl_histsales_rate',
+                        line: p,
+                    });
 
-      const fieldMap = {
-        location: 'location',
-        line: 'custcol_hci_line_id',
-        item: 'item',
-        custcol_mhi_hc_specialorder: 'custcol_mhi_hc_specialorder',
-        custcol_mhi_hc_dropship: 'custcol_mhi_hc_dropship',
-        memo: 'description',
-        quantity: 'quantity',
-        pricelevel: 'price',
-        rate: 'rate',
-        amount: 'amount',
-        shipdate: 'expectedshipdate',
-        custcol_hci_gp_vendor: 'povendor,custcol_hci_gp_vendor',
-        custcol_hci_alternatevendor: 'custcol_hci_alternatevendor',
-        custcol_hci_soporate: 'porate,custcol_hci_soporate',
-        custcol_hf_item_type: 'custcol_hf_item_type',
-        custcol_scm_customerpartnumber: 'custcol_scm_customerpartnumber',
-        costestimate: 'costestimate'
-      };
+                    var orderQuantity = context.request.getSublistValue({
+                        group: 'custpage_vendorbill_sublist',
+                        name: 'custpage_sl_histsales_quantity',
+                        line: p,
+                    });
 
-      salesOrder = record.transform({
-        fromType: 'customer',
-        fromId: customerId,
-        toType: 'salesorder',
-        isDynamic: true
-      });
+                    if(!linesToUpdate.hasOwnProperty(orderItem)) {
 
-      salesOrder.setValue('orderstatus', 'A');
-      salesOrder.setValue('otherrefnum', custpage_po_number);
-      salesOrder.setValue('cseg_hci_branch', custpage_branch);
+                        linesToUpdate[orderItem] = {
+                            rate : [orderPrice],
+                            item : [orderItem],
+                            quantity : [orderQuantity]
+                        }
+                    } else {
+                        linesToUpdate[recIntId].lineIntIds.push(lineIntId);
+                    }
 
-    for (let a = 0; a < sortedLines.length; a++) {
-      const orderLineObj = sortedLines[a];
+                    log.debug({'title' : 'linesToUpdate', 'details' : JSON.stringify(linesToUpdate)});
 
-      // log.debug('orderLineObj', JSON.stringify(orderLineObj));
-
-      const { quote, line } = orderLineObj;
-
-      const quoteLineObj = _.findWhere(quoteLines, { id: quote, line });
-
-      log.debug('quoteLineObj', JSON.stringify(quoteLineObj));
-
-      if (quoteLineObj) {
-        let isVendorItem = false;
-        soLineCount += 1;
-        orderLineObj.selectionNum = soLineCount;
-
-        salesOrder.selectNewLine('item');
-        salesOrder.setCurrentSublistValue('item', 'custcol_hci_linnkedquote', quoteLineObj.id);
-
-        _.each(searchFields, (searchField) => {
-          let value = quoteLineObj[searchField];
-          const setColumns = fieldMap[searchField].split(',');
-
-          // log.debug('searchField=' + searchField);
-
-          if (value && searchField == 'shipdate') {
-            value = format.parse({
-              value,
-              type: format.Type.DATE
-            });
-          } else if (value && (searchField == 'custcol_mhi_hc_specialorder' || searchField == 'custcol_mhi_hc_dropship')) {
-            isVendorItem = true;
-            return;
-          }
-
-          for (let c = 0; c < setColumns.length; c++) {
-            const setColumn = setColumns[c];
-
-            if (!isVendorItem && (setColumn == 'povendor' || setColumn == 'custcol_hci_gp_vendor' || setColumn == 'porate' || setColumn == 'custcol_hci_soporate')) {
-              return;
+                }
             }
 
-            if (value && setColumn == 'povendor') {
-              value = parseInt(value);
-            } else if (value && setColumn == 'custcol_hci_line_id') {
-              value = soLineCount;
-            }
-
-            // log.debug(setColumn, value);
-
-            salesOrder.setCurrentSublistValue('item', setColumn, value);
-          }
-        });
-
-        salesOrder.commitLine('item');
-      }
-    }
-
-    if (!custpage_sales_order && quotes.length == 1) {
-      const quote = record.load({
-        type: 'estimate',
-        id: sortedLines[0].quote,
-        isDynamic: true
-      });
-
-      salesOrder.setValue('cseg_hci_branch', quote.getValue('cseg_hci_branch'));
-      salesOrder.setValue('custbody_hf_fob', quote.getValue('custbody_hf_fob'));
-      salesOrder.setValue('custbody_hci_freightterms', quote.getValue('custbody_hci_freightterms'));
-      salesOrder.setValue('shipcarrier', quote.getValue('shipcarrier'));
-      salesOrder.setValue('shipmethod', quote.getValue('shipmethod'));
-      salesOrder.setValue('custbody_hf_freight_carrier', quote.getValue('custbody_hf_freight_carrier'));
-      salesOrder.setValue('custbody_hci_ordercreator', quote.getValue('custbody_hci_ordercreator'));
-      salesOrder.setValue('custbody_if_bol_notes', quote.getValue('custbody_if_bol_notes'));
-      salesOrder.setValue('custbody_hf_third_party_account', quote.getValue('custbody_hf_third_party_account'));
-
-      const salesOrderLineCount = salesOrder.getLineCount('salesteam');
-
-      for (let s = salesOrderLineCount - 1; s >= 0; s--) {
-        salesOrder.removeLine({
-          sublistId: 'salesteam',
-          line: s
-        });
-      }
-
-      const salesTeamLineCount = quote.getLineCount('salesteam');
-
-      for (let s = 0; s < salesTeamLineCount; s++) {
-        salesOrder.selectNewLine('salesteam');
-        salesOrder.setCurrentSublistValue('salesteam', 'employee', quote.getSublistValue('salesteam', 'employee', s));
-        salesOrder.setCurrentSublistValue('salesteam', 'salesrole', quote.getSublistValue('salesteam', 'salesrole', s));
-        salesOrder.setCurrentSublistValue('salesteam', 'isprimary', quote.getSublistValue('salesteam', 'isprimary', s));
-        salesOrder.setCurrentSublistValue('salesteam', 'contribution', quote.getSublistValue('salesteam', 'contribution', s));
-        salesOrder.commitLine('salesteam');
-      }
-    }
-
-    const salesOrderId = salesOrder.save();
-
-    log.debug('Sales Order Created, ID=' + salesOrderId);
-
-    let scriptDeploymentId = null;
-
-    const deploymentSearch = search.create({
-      type: 'scriptdeployment',
-      filters: search.createFilter({
-        name: 'scriptid',
-        operator: search.Operator.IS,
-        values: 'customdeploy_mhi_hc_quote_to_order_sl'
-      })
-    });
-
-    deploymentSearch.run().each((result) => {
-      scriptDeploymentId = result.id;
-
-      return false;
-    });
-
-    record.submitFields({
-      type: 'scriptdeployment',
-      id: scriptDeploymentId,
-      values: { custscript_mhi_last_sales_order: salesOrderId }
-    });
-
-    const orderObj = {
-      salesOrderId,
-      lines: sortedLines
-    };
-
-    task.create({
-      taskType: task.TaskType.MAP_REDUCE,
-      scriptId: 'customscript' + SCHEDULED_SCRIPT_EXT,
-      deploymentId: 'customdeploy' + SCHEDULED_SCRIPT_EXT,
-      params: { custscript_mhi_order: JSON.stringify(orderObj) }
-    }).submit();
-
-    context.response.sendRedirect({
-      identifier: record.Type.SALES_ORDER,
-      type: https.RedirectType.RECORD,
-      editMode: false,
-      id: salesOrderId
-    });
-    
+    //next test this function
   }
 
 
