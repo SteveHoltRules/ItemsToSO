@@ -319,7 +319,7 @@ define([
     log.debug({ title: "End onGet" });
   }
 
-  function onPost(context) {
+  function onPost(scriptContext) {
     // TODO
     //   onPost would fire on the submit
     // all values get passed into the HTTP object - would process the control value (reference by the control value). Posting it back to the server to do stuff.
@@ -334,7 +334,7 @@ define([
             // lineCount is a method returned by the suitelet widget module
             for (var p = 0; p < resultList.lineCount; p++) {
 
-                var selectValue = context.request.getSublistValue({
+                var selectValue = scriptContext.request.getSublistValue({
                     group: 'custpage_sl_one',
                     name: 'custpage_sl_histsales_select',
                     line: p
@@ -370,7 +370,7 @@ define([
                             quantity : [orderQuantity]
                         }
                     } else {
-                        linesToUpdate[recIntId].lineIntIds.push(lineIntId);
+                        linesToUpdate[orderItem].lineIntIds.push(lineIntId);
                     }
 
                     log.debug({'title' : 'linesToUpdate', 'details' : JSON.stringify(linesToUpdate)});
