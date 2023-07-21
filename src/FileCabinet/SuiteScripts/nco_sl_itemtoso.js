@@ -91,7 +91,7 @@ define([
 
     const eventRouter = {
       [https.Method.GET]: onGet(scriptContext),
-      [https.Method.POST]: onPost(scriptContext),
+      // [https.Method.POST]: onPost(scriptContext),
     };
 
     try {
@@ -187,6 +187,7 @@ define([
     log.debug({title: "CustomerSelected", details: customerSelected})
 
     if (!customerSelected) {
+      log.debug({title: "customer selected section"})
       scriptContext.response.writePage(form);
       return;
     }
@@ -226,7 +227,7 @@ define([
     });
 
     const entityId = form.getField({id: 'custpage_sl_histsales_cust'});
-
+    // historical sales is the sql statement to pull in all of the sales
     let results = historicalSales(entityId, form);
 
     log.debug({
@@ -254,16 +255,8 @@ define([
         for (let c = 0; c < columnNames.length; c++) {
           let columnName = columnNames[c];
           let value = result[columnName];
-          // resultList.addField({
-          //   id: 'custpage_sl_histsales_ioselect',
-          //   label: 'Sales Order',
-          //   type: 'select',
-          // });
-          // resultList.setSublistValue({
-          //   id:'custpage_sl_histsales_ioselect',
-          //   line: r,
-          //   value: 'F',
-          // });
+
+          // how do I return the results that are selected?
           switch (columnName) {
                 case "tranid":
                   resultList.setSublistValue({
@@ -306,17 +299,18 @@ define([
       }
     }
 
-    // if (typeof parameters.entityId != "undefined") {
-    //   historicalSales(17815, form);
-    // }
 
     // Add a submit button to the form - Submit button is in the onGet function. The trigger event is a programmed call into the onPost Function
     form.addSubmitButton({
         label: 'Create Sales Order'
     });
+    // how do I send the selected orders to the post function?!
 
     scriptContext.response.writePage(form);
+    log.debug({ title: 'resultList', details: resultList})
     log.debug({ title: "End onGet" });
+    // return resultList
+    
   }
 
   function onPost(scriptContext) {
@@ -329,7 +323,9 @@ define([
     // reports/financial/
     // nco_sl_tkm_trialbalance
 
+    // the result list is not inherited because it is in a different function...
     var linesToUpdate = {};
+
             // If the method is post, the getsublistvalue of the select for the lines
             // lineCount is a method returned by the suitelet widget module
             for (var p = 0; p < resultList.lineCount; p++) {
